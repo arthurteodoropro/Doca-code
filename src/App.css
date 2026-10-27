@@ -3694,10 +3694,9 @@
 .pyblocks-console { display: grid; grid-template-columns: 110px minmax(0, 1fr); min-height: 100px; border-top: 1px solid #193e76; background: #06142b; }
 .pyblocks-console strong { padding: 16px; color: #93c5fd; font-size: 13px; text-transform: uppercase; }
 .pyblocks-console pre { padding-left: 0; }
-.blocklyToolboxDiv { background: #092d70 !important; color: #ffffff; }
-.blocklyTreeLabel { color: #ffffff !important; font-family: var(--sans) !important; }
-.blocklyTreeRow { height: 34px !important; }
-.blocklyTreeSelected { background: #0968ed !important; }
+.blocklyToolbox { background: #092d70 !important; color: #ffffff; }
+.blocklyToolboxCategoryLabel { color: #ffffff !important; font-family: var(--sans) !important; }
+.blocklyToolboxSelected { background: #0968ed !important; }
 .blocklyFlyoutBackground { fill: #f8fbff !important; }
 .blocklySvg { background: #f8fbff; }
 .blocklyPath { stroke-linejoin: round; }
@@ -3722,19 +3721,31 @@
 .pyblocks-topbar h1 { overflow: hidden; margin: 0; color: #092d70; font-size: clamp(18px, 2vw, 24px); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .pyblocks-topbar button { min-height: 36px; padding: 6px 10px; border: 1px solid #b9d3f8; border-radius: 10px; color: #0757d9; background: #ffffff; font: inherit; font-weight: 800; cursor: pointer; }
 .pyblocks-topbar .pyblocks-back { justify-self: start; color: #ffffff; background: #092d70; border-color: #092d70; white-space: nowrap; }
-.pyblocks-topbar .pyblocks-task-button { display: grid; width: 40px; flex: 0 0 40px; place-items: center; padding: 0; border-radius: 50%; color: #ffffff; background: #0968ed; font-size: 21px; }
+.pyblocks-topbar .pyblocks-task-button { display: grid; width: 40px; flex: 0 0 40px; place-items: center; padding: 0; border-radius: 50%; color: #ffffff; background: #0968ed; font-size: 21px; animation: pyblocks-task-nudge 700ms ease-in-out 3; }
+@keyframes pyblocks-task-nudge {
+  50% { transform: scale(1.12); box-shadow: 0 0 0 7px rgba(9, 104, 237, 0.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pyblocks-topbar .pyblocks-task-button { animation: none; }
+}
 .pyblocks-main { grid-template-columns: minmax(0, 1.4fr) minmax(380px, 1fr); gap: 10px; min-height: 0; }
 .pyblocks-workspace, .pyblocks-code, .pyblocks-console { border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 20px; box-shadow: 0 18px 38px -28px rgba(7, 57, 130, 0.48); overflow: hidden; }
 .pyblocks-workspace { position: relative; background: #fafdff; }
 .pyblocks-hint { position: absolute; right: 16px; bottom: 12px; z-index: 2; margin: 0; padding: 8px 11px; border: 1px solid #d5e7ff; border-radius: 10px; color: #375a94; background: rgba(255, 255, 255, 0.92); font-size: 12px; pointer-events: none; }
 .blocklySvg { background-color: #fafdff !important; background-image: radial-gradient(#cce5ff 1.2px, transparent 1.2px); background-size: 18px 18px; }
-.blocklyToolboxDiv { width: 220px !important; margin: 0 !important; padding: 14px 10px; border-right: 1px solid #d5e7ff; background: rgba(255, 255, 255, 0.94) !important; box-sizing: border-box; }
-.blocklyTreeRow { height: 52px !important; margin: 4px 0 !important; padding: 0 13px !important; border-radius: 12px !important; }
-.blocklyTreeLabel { color: #375a94 !important; font-size: 15px !important; font-weight: 800 !important; }
-.blocklyTreeSelected { background: #dcecff !important; }
-.blocklyTreeSelected .blocklyTreeLabel { color: #0968ed !important; }
-.blocklyTreeIcon { margin-right: 10px !important; }
-.blocklyFlyoutBackground { fill: #fafdff !important; fill-opacity: 0.98 !important; }
+.blocklyToolbox { width: 190px !important; margin: 0 !important; padding: 12px 9px; border-right: 1px solid #d5e7ff; border-radius: 18px 0 0 18px; background: linear-gradient(180deg, #f8fbff, #edf5ff) !important; box-shadow: inset -8px 0 18px -18px rgba(7, 57, 130, 0.5); box-sizing: border-box; }
+.blocklyToolboxCategoryGroup { gap: 5px; }
+.blocklyToolboxCategoryContainer { margin: 0 2px; }
+.blocklyToolboxCategory { position: relative; display: flex; height: 40px !important; align-items: center; margin: 0 !important; padding: 0 9px !important; border: 1px solid #d9e8fb; border-radius: 11px; background: rgba(255, 255, 255, 0.82); box-shadow: 0 2px 6px rgba(7, 57, 130, 0.06); transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease; }
+.blocklyToolboxCategory:hover { border-color: #b7d4fa; background: #ffffff; box-shadow: 0 5px 12px rgba(7, 57, 130, 0.1); }
+.blocklyToolboxCategory:focus-visible { outline: 3px solid rgba(9, 104, 237, 0.35); outline-offset: 2px; }
+.blocklyToolboxCategory::after { margin-left: auto; color: #396298; content: '›'; font: 700 22px/1 var(--sans); }
+.blocklyToolboxCategoryLabel { overflow: hidden; color: #173c77 !important; font: 750 14px/1.2 var(--sans) !important; text-overflow: ellipsis; }
+.blocklyToolboxSelected { border-color: #0968ed; background: linear-gradient(105deg, #1680ff, #0757d9) !important; box-shadow: 0 6px 14px rgba(9, 104, 237, 0.24) !important; }
+.blocklyToolboxSelected .blocklyToolboxCategoryLabel, .blocklyToolboxSelected::after { color: #ffffff !important; }
+.blocklyToolboxSelected:hover { background: linear-gradient(105deg, #1680ff, #0757d9) !important; }
+.blocklyToolboxCategoryIcon { display: none !important; }
+.blocklyFlyoutBackground { fill: #fafdff !important; fill-opacity: 0.98 !important; filter: drop-shadow(0 8px 14px rgba(7, 45, 112, 0.14)); }
 .blocklyZoom { fill: #ffffff !important; stroke: #cbe1ff !important; stroke-width: 1px !important; }
 .pyblocks-empty-state { position: absolute; z-index: 3; top: 50%; left: calc(50% + 90px); width: min(360px, calc(100% - 250px)); display: grid; justify-items: center; gap: 8px; color: #294d94; pointer-events: none; text-align: center; transform: translate(-50%, -50%); }
 .pyblocks-empty-state > span { display: grid; width: 78px; height: 78px; place-items: center; border-radius: 24px; color: #ffffff; background: linear-gradient(135deg, #1680ff, #0757d9); box-shadow: 0 14px 24px -16px #0757d9; font-size: 42px; }
@@ -3758,9 +3769,9 @@
 .pyblocks-actions-footer { display: none; }
 .pyblocks-console button { padding: 11px 16px; border: 1.5px solid #0968ed; border-radius: 12px; color: #0968ed; background: #ffffff; font: inherit; font-weight: 800; cursor: pointer; }
 .pyblocks-console .pyblocks-run { min-width: 136px; border-color: #0968ed; color: #ffffff; background: #0968ed; box-shadow: 0 10px 18px -14px #0757d9; }
-@media (max-width: 920px) { .pyblocks-main { grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr); } .blocklyToolboxDiv { width: 180px !important; } .pyblocks-empty-state { left: calc(50% + 65px); width: min(280px, calc(100% - 195px)); } }
+@media (max-width: 920px) { .pyblocks-main { grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr); } .blocklyToolbox { width: 170px !important; } .pyblocks-empty-state { left: calc(50% + 60px); width: min(280px, calc(100% - 180px)); } }
 @media (max-width: 920px) { .pyblocks-actions-header { display: none; } .pyblocks-actions-footer { display: flex; } .pyblocks-console nav { justify-content: flex-end; } }
-@media (max-width: 680px) { .pyblocks-page { padding: 8px; } .pyblocks-main { grid-template-columns: 1fr; } .pyblocks-code { display: none; } .blocklyToolboxDiv { width: 158px !important; } .pyblocks-empty-state { left: calc(50% + 42px); width: min(250px, calc(100% - 170px)); } .pyblocks-console { grid-template-columns: 1fr; min-height: 68px; } .pyblocks-status, .pyblocks-console pre { display: none; } .pyblocks-console nav { flex-wrap: wrap; justify-content: flex-end; gap: 6px; padding: 8px; } .pyblocks-console nav > button, .pyblocks-console .pyblocks-actions button { padding: 8px 10px; font-size: 13px; } .pyblocks-actions { flex-wrap: wrap; gap: 6px; } }
+@media (max-width: 680px) { .pyblocks-page { padding: 8px; } .pyblocks-main { grid-template-columns: 1fr; } .pyblocks-code { display: none; } .blocklyToolbox { width: 148px !important; padding-right: 7px; padding-left: 7px; } .blocklyToolbox::before { margin-right: 0; margin-left: 2px; font-size: 14px; } .blocklyToolboxCategory { height: 36px !important; padding-right: 6px !important; padding-left: 6px !important; } .blocklyToolboxCategoryLabel { font-size: 11px !important; } .pyblocks-empty-state { left: calc(50% + 38px); width: min(250px, calc(100% - 160px)); } .pyblocks-console { grid-template-columns: 1fr; min-height: 68px; } .pyblocks-status, .pyblocks-console pre { display: none; } .pyblocks-console nav { flex-wrap: wrap; justify-content: flex-end; gap: 6px; padding: 8px; } .pyblocks-console nav > button, .pyblocks-console .pyblocks-actions button { padding: 8px 10px; font-size: 13px; } .pyblocks-actions { flex-wrap: wrap; gap: 6px; } }
 
 .pyblocks-module-page { grid-template-rows: auto minmax(0, 1fr) auto; }
 .module-lesson { display: grid; grid-template-columns: minmax(210px, 0.62fr) minmax(0, 1.38fr); gap: 20px; align-items: center; padding: 14px 20px; border: 1px solid rgba(255, 255, 255, 0.92); border-radius: 16px; background: rgba(255, 255, 255, 0.94); box-shadow: 0 18px 38px -28px rgba(7, 57, 130, 0.48); }
