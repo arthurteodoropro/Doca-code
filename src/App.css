@@ -3762,12 +3762,28 @@
 .module-lesson-steps strong { color: #173c77; font-size: 13px; }
 .module-lesson-steps p { margin: 4px 0 6px; color: #54709d; font-size: 12px; line-height: 1.35; }
 .module-lesson-steps code { display: block; overflow-wrap: anywhere; padding: 5px 7px; border-radius: 5px; color: #174e9c; background: #edf5ff; font: 11px/1.35 'SFMono-Regular', Consolas, monospace; }
+.module-intro-backdrop { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 20px; background: rgba(5, 23, 54, 0.62); backdrop-filter: blur(5px); }
+.module-intro-dialog { position: relative; width: min(100%, 560px); max-height: min(90svh, 720px); overflow-y: auto; padding: 34px; border: 1px solid #d5e5fb; border-radius: 12px; color: #173c77; background: #ffffff; box-shadow: 0 28px 80px rgba(2, 20, 52, 0.32); }
+.module-intro-close { position: absolute; top: 12px; right: 12px; display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid #d5e5fb; border-radius: 8px; color: #375a94; background: #f5faff; font: 26px/1 var(--sans); cursor: pointer; }
+.module-intro-kicker { color: #0968ed; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.module-intro-dialog h2 { margin: 8px 42px 6px 0; color: #092d70; font-size: 28px; line-height: 1.15; }
+.module-intro-dialog > p { margin: 0; color: #54709d; font-size: 15px; line-height: 1.5; }
+.module-intro-instructions { display: grid; gap: 12px; margin: 24px 0; padding: 0; list-style: none; counter-reset: intro-step; }
+.module-intro-instructions li { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 12px; align-items: start; counter-increment: intro-step; }
+.module-intro-instructions li::before { content: counter(intro-step); display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; color: #ffffff; background: #0968ed; font-size: 13px; font-weight: 800; }
+.module-intro-instructions strong, .module-intro-instructions span { grid-column: 2; }
+.module-intro-instructions strong { color: #173c77; font-size: 14px; }
+.module-intro-instructions span { margin-top: 2px; color: #54709d; font-size: 13px; line-height: 1.45; }
+.module-intro-start { width: 100%; min-height: 46px; border: 0; border-radius: 8px; color: #ffffff; background: #0968ed; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+.module-intro-close:focus-visible, .module-intro-start:focus-visible { outline: 3px solid #76b2ff; outline-offset: 3px; }
 @media (max-width: 900px) {
   .module-lesson { grid-template-columns: minmax(160px, 0.55fr) minmax(0, 1.45fr); gap: 12px; padding: 12px 14px; }
   .module-lesson-steps { gap: 6px; }
   .module-lesson-steps li { padding-right: 6px; padding-left: 8px; }
 }
 @media (max-width: 680px) {
+  .module-intro-dialog { padding: 28px 22px 22px; }
+  .module-intro-dialog h2 { font-size: 24px; }
   .pyblocks-module-page { grid-template-rows: auto minmax(0, 1fr) auto; }
   .module-lesson { max-height: 170px; grid-template-columns: 1fr; gap: 10px; align-items: start; overflow-y: auto; padding: 10px 12px; }
   .module-lesson-heading h1 { font-size: 17px; }

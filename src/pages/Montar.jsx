@@ -441,11 +441,27 @@ function Montar({ onBack, module }) {
   const moduleNumber = module?.number
   const editorRef = useRef(null)
   const workspaceRef = useRef(null)
+  const moduleIntroButtonRef = useRef(null)
   const [code, setCode] = useState('# Arraste blocos para começar\n')
   const [consoleText, setConsoleText] = useState('> Pronto para montar seu programa.')
   const [hasBlocks, setHasBlocks] = useState(false)
   const [popup, setPopup] = useState(null)
   const [running, setRunning] = useState(false)
+  const [showModuleIntro, setShowModuleIntro] = useState(moduleNumber === 1)
+
+  useEffect(() => {
+    setShowModuleIntro(moduleNumber === 1)
+  }, [moduleNumber])
+
+  useEffect(() => {
+    if (!showModuleIntro) return undefined
+    moduleIntroButtonRef.current?.focus()
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setShowModuleIntro(false)
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [showModuleIntro])
 
   useEffect(() => {
     registerPythonBlocks()
@@ -519,7 +535,34 @@ function Montar({ onBack, module }) {
   }
 
   const clearWorkspace = () => { workspaceRef.current?.clear(); setConsoleText('> Workspace limpo.\n✓ Pronto para um novo programa.') }
-  const saveWorkspace = () => { if (workspaceRef.current) localStorage.setItem('pyblocks-workspace', JSON.stringify(Blockly.serialization.workspaces.save(workspaceRef.current))); setConsoleText('✓ Projeto salvo neste navegador.') }
+  const saveWorkspace = () => {
+    const workspace = workspaceRef.current
+    if (!workspace) return
+
+    let workspaceSaved = false
+    try {
+      localStorage.setItem('pyblocks-workspace', JSON.stringify(Blockly.serialization.workspaces.save(workspace)))
+      workspaceSaved = true
+    } catch {
+      // O download deve continuar mesmo se o navegador bloquear o armazenamento local.
+    }
+
+    const generatedCode = pythonGenerator.workspaceToCode(workspace).trim() || '# Arraste blocos para começar'
+    const file = new Blob([`${generatedCode}\n`], { type: 'text/x-python;charset=utf-8' })
+    const downloadUrl = URL.createObjectURL(file)
+    const downloadLink = document.createElement('a')
+    downloadLink.href = downloadUrl
+    downloadLink.download = moduleNumber ? `modulo-${moduleNumber}.py` : 'programa.py'
+    document.body.appendChild(downloadLink)
+    downloadLink.click()
+    downloadLink.remove()
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+
+    const filename = downloadLink.download
+    setConsoleText(workspaceSaved
+      ? `✓ ${filename} baixado. Workspace salvo neste navegador.`
+      : `✓ ${filename} baixado. O workspace não pôde ser salvo neste navegador.`)
+  }
   const runProgram = async () => {
     if (running) return
     setRunning(true)
@@ -566,6 +609,23 @@ function Montar({ onBack, module }) {
             ))}
           </ol>
         </section>
+      )}
+      {moduleNumber === 1 && showModuleIntro && (
+        <div className="module-intro-backdrop">
+          <section className="module-intro-dialog" role="dialog" aria-modal="true" aria-labelledby="module-intro-title" aria-describedby="module-intro-description">
+            <button type="button" className="module-intro-close" onClick={() => setShowModuleIntro(false)} aria-label="Fechar instruções">×</button>
+            <span className="module-intro-kicker">Primeiros passos · Módulo 1</span>
+            <h2 id="module-intro-title">Como usar os blocos</h2>
+            <p id="module-intro-description">Monte seu programa conectando peças no espaço de trabalho.</p>
+            <ol className="module-intro-instructions">
+              <li><strong>Escolha</strong><span>Abra uma categoria à esquerda e arraste um bloco para a área de trabalho.</span></li>
+              <li><strong>Encaixe</strong><span>Aproxime os conectores de outro bloco até as peças se unirem.</span></li>
+              <li><strong>Edite</strong><span>Clique em um bloco para preencher os campos, como o nome ou o valor de uma variável.</span></li>
+              <li><strong>Remova</strong><span>Arraste um bloco para a lixeira no canto inferior da área de trabalho.</span></li>
+            </ol>
+            <button ref={moduleIntroButtonRef} type="button" className="module-intro-start" onClick={() => setShowModuleIntro(false)}>Começar</button>
+          </section>
+        </div>
       )}
       <main className="pyblocks-main"><section className="pyblocks-workspace"><div ref={editorRef} className="blockly-editor" aria-label="Workspace de blocos" />{!hasBlocks && <div className="pyblocks-empty-state" aria-hidden="true"><span>▣</span><strong>Arraste os blocos para começar</strong><p>Monte seu programa usando as categorias à esquerda.</p></div>}</section><section className="pyblocks-code"><div className="pyblocks-panel-heading"><h2><span aria-hidden="true">⌘</span> Python</h2><button type="button" onClick={copyCode}>▣ Copiar</button></div><pre>{code.split('\n').map((line, index) => <code key={`${index}-${line}`}><span>{index + 1}</span>{line || ' '}</code>)}</pre></section></main>
       <section className="pyblocks-console"><div className="pyblocks-status"><span aria-hidden="true" /> <strong>Pronto</strong><small>Sua vez de criar!</small></div><pre aria-label="Console">{consoleText}</pre><nav aria-label="Ações do editor"><button type="button" onClick={onBack}>← Voltar</button><button type="button" onClick={saveWorkspace}>💾 Salvar</button><button type="button" onClick={clearWorkspace}>↻ Limpar</button><button type="button" className="pyblocks-run" onClick={runProgram} disabled={running}>{running ? '⏳ Executando...' : '▶ Executar'}</button></nav></section>
