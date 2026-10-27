@@ -1,30 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Blockly from 'blockly'
 import { pythonGenerator } from 'blockly/python'
+import { registerPythonBlocks } from '../pythonBlocks.js'
 
 const RECTANGULAR_RENDERER = 'pyblocks_rectangular'
 const CONTAINER_THEME = 'pyblocks_container'
 
-// ---------------------------------------------------------------------------
-// Visual "container de carga"
-// Cada bloco é um retângulo com:
-//  - nervuras verticais (as ondulações da lateral do container)
-//  - frame interno (moldura da porta)
-//  - dobradiças/travas metálicas nas duas bordas
-//  - luz no topo e sombra na base para dar volume
-// ---------------------------------------------------------------------------
-
 const RIB_SPACING = 12
 const HARDWARE = { fill: '#cbd5e1', stroke: '#64748b' }
 
-// Path object próprio: guarda camadas extras de decoração dentro do <g> do bloco.
 class ContainerPathObject extends Blockly.zelos.PathObject {
   constructor(root, style, constants) {
     super(root, style, constants)
     const layer = (attrs) =>
       Blockly.utils.dom.createSvgElement('path', { 'pointer-events': 'none', ...attrs }, this.svgRoot)
 
-    // Ordem = ordem de empilhamento (o texto dos campos fica por cima de tudo)
     this.decor = {
       ribShadow: layer({ fill: 'none', stroke: 'rgba(0,0,0,0.26)', 'stroke-width': 3 }),
       ribLight: layer({ fill: 'none', stroke: 'rgba(255,255,255,0.20)', 'stroke-width': 1 }),
@@ -34,8 +24,6 @@ class ContainerPathObject extends Blockly.zelos.PathObject {
     }
   }
 
-  // Marca blocos "sólidos" (não-shadow). Os shadows (ex.: o número dentro de
-  // um bloco de soma) mantêm a caixinha branca padrão do Zelos.
   applyColour(block) {
     super.applyColour(block)
     this.svgRoot.classList.toggle('pb-solid', !block.isShadow())
@@ -59,9 +47,8 @@ class RectangularConstants extends Blockly.zelos.ConstantProvider {
 
 class RectangularDrawer extends Blockly.zelos.Drawer {
   drawOutline_() {
-    // Deixa o Blockly calcular as conexões e depois troca o contorno de
-    // peça de quebra-cabeça por um retângulo com moldura interna (porta).
     super.drawOutline_()
+    const connectionOutline = this.outlinePath_
     const { startX, startY, width, height } = this.info_
     const inset = 5
     const innerLeft = startX + inset
@@ -69,7 +56,7 @@ class RectangularDrawer extends Blockly.zelos.Drawer {
     const innerRight = width - inset
     const innerBottom = height - inset
 
-    this.outlinePath_ = `M ${startX} ${startY} H ${width} V ${height} H ${startX} Z M ${innerLeft} ${innerTop} H ${innerRight} V ${innerBottom} H ${innerLeft} Z`
+    this.outlinePath_ = `${connectionOutline} M ${innerLeft} ${innerTop} H ${innerRight} V ${innerBottom} H ${innerLeft} Z`
   }
 
   draw() {
@@ -83,18 +70,8 @@ class RectangularDrawer extends Blockly.zelos.Drawer {
     const bodyH = height - startY
     if (this.block_.isInsertionMarker() || this.block_.isShadow() || bodyW < 30 || bodyH < 24) return null
 
-    // As nervuras ficam só na parte "pintada" da peça: terminam onde começa
-    // o encaixe da direita (por onde entram as próximas peças da linha).
-    let ribLimit = width - 16
-    for (const row of this.info_.rows ?? []) {
-      for (const element of row.elements ?? []) {
-        if (Blockly.blockRendering.Types.isInlineInput(element)) {
-          ribLimit = Math.min(ribLimit, element.xPos - 4)
-        }
-      }
-    }
+    const ribLimit = width - 16
 
-    // Nervuras verticais
     let ribShadow = ''
     let ribLight = ''
     for (let x = startX + 18; x < ribLimit; x += RIB_SPACING) {
@@ -102,7 +79,6 @@ class RectangularDrawer extends Blockly.zelos.Drawer {
       ribLight += `M ${x + 2} ${startY + 8} V ${height - 8} `
     }
 
-    // Dobradiças / travas nas duas bordas
     const latches = bodyH > 70 ? 3 : 2
     const latchW = 6
     const latchH = 11
@@ -126,7 +102,6 @@ class RectangularDrawer extends Blockly.zelos.Drawer {
 
 const ALIGN_CENTRE = Blockly.inputs?.Align?.CENTRE ?? 0
 
-// Centraliza o conteúdo (texto/campos) de todas as linhas do bloco.
 class RectangularRenderInfo extends Blockly.zelos.RenderInfo {
   alignRowElements_() {
     for (const row of this.rows) {
@@ -160,7 +135,6 @@ if (!Blockly.registry.hasItem(Blockly.registry.Type.RENDERER, RECTANGULAR_RENDER
   Blockly.blockRendering.register(RECTANGULAR_RENDERER, RectangularRenderer)
 }
 
-// Tema: texto em negrito (parece pintura de container) e fundo azul-claro de pátio.
 const containerTheme = Blockly.Theme.defineTheme(CONTAINER_THEME, {
   name: CONTAINER_THEME,
   base: Blockly.Themes.Zelos,
@@ -172,14 +146,7 @@ const containerTheme = Blockly.Theme.defineTheme(CONTAINER_THEME, {
   },
 })
 
-// ---------------------------------------------------------------------------
-// Edição de valores: popup "porta do container"
-// Clicar em qualquer parte da peça (ou direto no valor) abre uma caixa com os
-// campos editáveis dela, como se o valor estivesse guardado dentro do container.
-// ---------------------------------------------------------------------------
-
 const CONTAINER_CSS = `
-/* Blocos sólidos: o valor aparece escrito direto na peça (pintura do container). */
 .pb-solid > .blocklyEditableField > rect:not(.blocklyDropdownRect),
 .pb-solid > .blocklyEditableText > rect:not(.blocklyDropdownRect) {
   fill: transparent !important;
@@ -191,7 +158,6 @@ const CONTAINER_CSS = `
   font-weight: 700;
 }
 
-/* Popup de preenchimento */
 .pb-backdrop {
   position: fixed;
   inset: 0;
@@ -258,12 +224,13 @@ const CONTAINER_CSS = `
 .pb-popup-actions button[type='submit'] { background: #0ea5e9; border-color: #0369a1; color: #ffffff; }
 `
 
-const InputField = Blockly.FieldInput ?? Blockly.FieldTextInput
+const InputField = typeof Blockly.FieldTextInput === 'function' ? Blockly.FieldTextInput : null
 
 const BLOCK_TITLES = {
   py_comment: 'Comentário',
   py_input: 'Entrada',
   py_assign: 'Definir variável',
+  py_op_assign: 'Atribuição',
   py_variable: 'Variável',
   text_print: 'Imprimir',
   text: 'Texto',
@@ -277,7 +244,6 @@ const BLOCK_TITLES = {
 const FIELD_LABELS = { NAME: 'Nome', VALUE: 'Valor', TEXT: 'Texto', PROMPT: 'Pergunta', NUM: 'Número' }
 const INPUT_LABELS = { A: 'Valor A', B: 'Valor B', FROM: 'De', TO: 'Até', BY: 'Passo', TEXT: 'Texto' }
 
-// Campos editáveis do bloco + os dos blocos shadow encaixados nele.
 function collectFields(block) {
   const items = []
   const push = (source, labels, useInputName) => {
@@ -298,12 +264,9 @@ function collectFields(block) {
   return items
 }
 
-// Ponte entre o Blockly (fora do React) e o popup (dentro do React).
 let openFieldEditor = null
 let lastOpenAt = 0
 
-// Substitui a caixinha nativa de edição pelo popup. Se o popup não estiver
-// disponível (ex.: componente desmontado), cai no editor nativo.
 if (InputField && !InputField.prototype.__pbPatched) {
   const nativeShowEditor = InputField.prototype.showEditor_
   InputField.prototype.showEditor_ = function (e, quietInput) {
@@ -314,11 +277,16 @@ if (InputField && !InputField.prototype.__pbPatched) {
   InputField.prototype.__pbPatched = true
 }
 
-// Peças já encaixadas nos slots (blocos reais, não shadows), para que o
-// aluno possa arrastá-las, trocá-las ou continuar a linha à direita delas.
 const num = (n) => ({ block: { type: 'py_num', fields: { NUM: n } } })
 const txt = (t) => ({ block: { type: 'py_text', fields: { TEXT: t } } })
 const op = (type, symbol) => ({ kind: 'block', type, fields: { OP: symbol } })
+const expressionToken = (type, fields, right) => ({
+  block: {
+    type,
+    ...(fields ? { fields } : {}),
+    ...(right ? { inputs: { RIGHT: right } } : {}),
+  },
+})
 
 const toolbox = { kind: 'categoryToolbox', contents: [
   { kind: 'category', name: 'Básico', colour: '#64748b', contents: [{ kind: 'block', type: 'py_comment' }] },
@@ -328,8 +296,11 @@ const toolbox = { kind: 'categoryToolbox', contents: [
     { kind: 'block', type: 'py_input' },
   ] },
   { kind: 'category', name: 'Variáveis', colour: '#8b5cf6', contents: [
-    { kind: 'block', type: 'py_assign', inputs: { VALUE: num(20) } },
+    { kind: 'block', type: 'py_assign', inputs: {
+      EXPRESSION: expressionToken('py_variable', { NAME: 'idade' }, expressionToken('py_op_assign', { OP: '=' }, num(20))),
+    } },
     { kind: 'block', type: 'py_variable' },
+    op('py_op_assign', '='),
   ] },
   { kind: 'category', name: 'Matemática', colour: '#f59e0b', contents: [
     { kind: 'block', type: 'py_num' },
@@ -342,6 +313,11 @@ const toolbox = { kind: 'categoryToolbox', contents: [
     op('py_op_math', '**'),
     { kind: 'block', type: 'py_paren', fields: { OP: '(' } },
     { kind: 'block', type: 'py_paren', fields: { OP: ')' } },
+  ] },
+  { kind: 'category', name: 'Listas', colour: '#10b981', contents: [
+    { kind: 'block', type: 'lists_create_with' },
+    { kind: 'block', type: 'lists_getIndex' },
+    { kind: 'block', type: 'lists_length' },
   ] },
   { kind: 'category', name: 'Lógica', colour: '#e11d48', contents: [
     op('py_op_compare', '=='),
@@ -362,121 +338,25 @@ const toolbox = { kind: 'categoryToolbox', contents: [
   { kind: 'category', name: 'Funções', colour: '#6366f1', custom: 'PROCEDURE' },
 ] }
 
-// ---------------------------------------------------------------------------
-// Expressões em linha
-// Toda peça de expressão tem um encaixe à direita (input RIGHT). Encaixar uma
-// peça ali acrescenta o código dela à direita no Python gerado, então
-// `idade + 1 > 3` é montado como uma fileira: [idade][+][1][>][3].
-// ---------------------------------------------------------------------------
-
-const RIGHT = 'RIGHT'
-
-// Une o código da peça com o resto da linha, sem espaço colado em parênteses.
-function joinTokens(left, right) {
-  if (!right) return left
-  if (left.endsWith('(') || right.startsWith(')')) return left + right
-  return `${left} ${right}`
+const TOOLBOX_CATEGORY_MODULES = {
+  'Básico': 1,
+  'Variáveis': 1,
+  'Entrada/Saída': 2,
+  'Matemática': 3,
+  'Listas': 4,
+  'Lógica': 5,
+  'Condições': 5,
+  'Repetição': 6,
+  'Funções': 7,
 }
 
-function defineToken(type, colour, buildFields, ownCode) {
-  Blockly.Blocks[type] = {
-    init() {
-      buildFields(this)
-      this.appendValueInput(RIGHT)
-      this.setInputsInline(true)
-      this.setOutput(true)
-      this.setColour(colour)
-    },
-  }
-  pythonGenerator.forBlock[type] = (block) => {
-    const rest = pythonGenerator.valueToCode(block, RIGHT, pythonGenerator.ORDER_NONE)
-    return [joinTokens(ownCode(block), rest), pythonGenerator.ORDER_NONE]
+function getToolboxForModule(moduleNumber) {
+  if (!moduleNumber) return toolbox
+  return {
+    ...toolbox,
+    contents: toolbox.contents.filter((category) => TOOLBOX_CATEGORY_MODULES[category.name] <= moduleNumber),
   }
 }
-
-const sanitizeName = (raw) => raw.trim().replace(/[^a-zA-Z0-9_]/g, '_') || 'variavel'
-
-function defineCustomBlocks() {
-  // Na peça aparece só o nome. Os demais valores ficam num input invisível:
-  // continuam existindo (geram código, são salvos e aparecem no popup),
-  // mas não são desenhados no bloco.
-  const addHiddenField = (block, name, text) => {
-    const input = block.appendDummyInput(`${name}_HIDDEN`)
-    input.appendField(new Blockly.FieldTextInput(text), name)
-    input.setVisible(false)
-  }
-
-  Blockly.Blocks.py_comment = {
-    init() {
-      this.appendDummyInput().appendField('comentário')
-      addHiddenField(this, 'TEXT', 'Explique seu código')
-      this.setPreviousStatement(true)
-      this.setNextStatement(true)
-      this.setColour('#64748b')
-    },
-  }
-  pythonGenerator.forBlock.py_comment = (block) => `# ${block.getFieldValue('TEXT')}\n`
-
-  // Atribuição: nome = <linha de expressão encaixada à direita do "=">
-  Blockly.Blocks.py_assign = {
-    init() {
-      this.appendDummyInput().appendField(new Blockly.FieldTextInput('idade'), 'NAME').appendField('=')
-      this.appendValueInput('VALUE')
-      this.setInputsInline(true)
-      this.setPreviousStatement(true)
-      this.setNextStatement(true)
-      this.setColour('#8b5cf6')
-    },
-  }
-  pythonGenerator.forBlock.py_assign = (block) => {
-    const value = pythonGenerator.valueToCode(block, 'VALUE', pythonGenerator.ORDER_NONE) || 'None'
-    return `${sanitizeName(block.getFieldValue('NAME'))} = ${value}\n`
-  }
-
-  // Peças de expressão (todas com encaixe à direita)
-  defineToken('py_num', '#f59e0b',
-    (b) => b.appendDummyInput().appendField(new Blockly.FieldNumber(0), 'NUM'),
-    (b) => String(b.getFieldValue('NUM')))
-
-  defineToken('py_text', '#0ea5e9',
-    (b) => b.appendDummyInput().appendField(new Blockly.FieldTextInput('texto'), 'TEXT'),
-    (b) => pythonGenerator.quote_(b.getFieldValue('TEXT')))
-
-  defineToken('py_variable', '#8b5cf6',
-    (b) => b.appendDummyInput().appendField(new Blockly.FieldTextInput('idade'), 'NAME'),
-    (b) => sanitizeName(b.getFieldValue('NAME')))
-
-  defineToken('py_input', '#0ea5e9',
-    (b) => {
-      b.appendDummyInput().appendField('entrada')
-      addHiddenField(b, 'PROMPT', 'Digite um valor')
-    },
-    (b) => `input(${JSON.stringify(b.getFieldValue('PROMPT'))})`)
-
-  const opField = (options) => (b) => b.appendDummyInput().appendField(new Blockly.FieldDropdown(options), 'OP')
-  const opCode = (b) => b.getFieldValue('OP')
-
-  defineToken('py_op_math', '#f59e0b',
-    opField([['+', '+'], ['−', '-'], ['×', '*'], ['÷', '/'], ['// (divisão inteira)', '//'], ['% (resto)', '%'], ['** (potência)', '**']]),
-    opCode)
-
-  defineToken('py_op_compare', '#e11d48',
-    opField([['==', '=='], ['≠', '!='], ['<', '<'], ['>', '>'], ['≤', '<='], ['≥', '>=']]),
-    opCode)
-
-  defineToken('py_op_logic', '#e11d48',
-    opField([['e', 'and'], ['ou', 'or'], ['não', 'not']]),
-    opCode)
-
-  defineToken('py_paren', '#f59e0b',
-    opField([['(', '('], [')', ')']]),
-    opCode)
-}
-
-// ---------------------------------------------------------------------------
-// Execução com Pyodide (Python rodando no navegador)
-// Carregado sob demanda via CDN na primeira vez que o aluno clica em Executar.
-// ---------------------------------------------------------------------------
 
 const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
 let pyodidePromise = null
@@ -499,7 +379,6 @@ function loadPyodideOnce() {
   return pyodidePromise
 }
 
-// input() do Python passa a usar a janelinha do navegador e ecoa a pergunta e a resposta no console.
 const PYODIDE_SETUP = `
 import builtins
 def _pb_input(prompt=''):
@@ -509,12 +388,10 @@ def _pb_input(prompt=''):
 builtins.input = _pb_input
 `
 
-// Caixa de preenchimento aberta sobre a peça clicada.
 function FieldPopup({ editor, onChange, onCommit, onCancel }) {
   const focusRef = useRef(null)
 
   useEffect(() => {
-    // Pequeno atraso: o Blockly devolve o foco ao workspace logo após o clique.
     const timer = setTimeout(() => {
       focusRef.current?.focus()
       focusRef.current?.select()
@@ -560,7 +437,8 @@ function FieldPopup({ editor, onChange, onCommit, onCancel }) {
   )
 }
 
-function Montar({ onBack }) {
+function Montar({ onBack, module }) {
+  const moduleNumber = module?.number
   const editorRef = useRef(null)
   const workspaceRef = useRef(null)
   const [code, setCode] = useState('# Arraste blocos para começar\n')
@@ -570,11 +448,10 @@ function Montar({ onBack }) {
   const [running, setRunning] = useState(false)
 
   useEffect(() => {
-    defineCustomBlocks()
-    const workspace = Blockly.inject(editorRef.current, { toolbox, renderer: RECTANGULAR_RENDERER, theme: containerTheme, trashcan: true, grid: { spacing: 20, length: 3, colour: '#d7e4f6', snap: true }, zoom: { controls: true, wheel: true, startScale: 0.9, maxScale: 1.35, minScale: 0.55 } })
+    registerPythonBlocks()
+    const workspace = Blockly.inject(editorRef.current, { toolbox: getToolboxForModule(moduleNumber), renderer: RECTANGULAR_RENDERER, theme: containerTheme, trashcan: true, grid: { spacing: 20, length: 3, colour: '#d7e4f6', snap: true }, zoom: { controls: true, wheel: true, startScale: 0.9, maxScale: 1.35, minScale: 0.55 } })
     workspaceRef.current = workspace
 
-    // Abre o popup para o bloco (ou, se for um shadow, para o bloco que o contém).
     const openEditor = (block, clickedField) => {
       const host = block.isShadow() && block.getParent() ? block.getParent() : block
       const items = collectFields(host)
@@ -605,15 +482,12 @@ function Montar({ onBack }) {
     }
     workspace.addChangeListener(updateCode)
 
-    // Clicar em qualquer parte da peça abre o popup com o valor dela.
-    // (Clicar direto no valor já abre via showEditor_; o "lastOpenAt" evita abrir duas vezes.)
     workspace.addChangeListener((event) => {
       if (event.type !== Blockly.Events.CLICK || event.targetType !== 'block' || !event.blockId) return
       const block = workspace.getBlockById(event.blockId)
       if (!block || block.isInFlyout) return
       setTimeout(() => {
         if (Date.now() - lastOpenAt < 250) return
-        // Se o clique abriu um dropdown (ex.: operador + − × ÷), deixa ele em paz.
         if (Blockly.DropDownDiv?.isVisible?.()) return
         openEditor(block, null)
       }, 0)
@@ -626,7 +500,7 @@ function Montar({ onBack }) {
       openFieldEditor = null
       workspace.dispose()
     }
-  }, [])
+  }, [moduleNumber])
 
   const changePopupValue = (index, value) => {
     setPopup((current) => current && {
@@ -659,12 +533,10 @@ function Montar({ onBack }) {
       pyodide.globals.set('__pb_prompt', (question) => window.prompt(question) ?? '')
       await pyodide.runPythonAsync(PYODIDE_SETUP)
 
-      // Namespace novo a cada execução: variáveis de uma execução não vazam para a próxima.
       namespace = pyodide.globals.get('dict')()
       await pyodide.runPythonAsync(code, { globals: namespace })
       setConsoleText(`> Executando programa...\n\n${output || '(o programa não imprimiu nada)'}\n✓ Programa finalizado`)
     } catch (error) {
-      // O erro do Python vem com o traceback inteiro; as últimas linhas são as que importam.
       const lines = String(error?.message ?? error).trim().split('\n')
       setConsoleText(`> Executando programa...\n\n✗ Erro:\n${lines.slice(-4).join('\n')}`)
     } finally {
@@ -675,8 +547,26 @@ function Montar({ onBack }) {
   const copyCode = async () => { await navigator.clipboard?.writeText(code); setConsoleText('✓ Código Python copiado para a área de transferência.') }
 
   return (
-    <section className="pyblocks-page">
+    <section className={module ? 'pyblocks-page pyblocks-module-page' : 'pyblocks-page'}>
       <style>{CONTAINER_CSS}</style>
+      {module && (
+        <section className="module-lesson" aria-label={`Tutorial do módulo ${module.number}`}>
+          <div className="module-lesson-heading">
+            <span>Módulo {module.number} · Tutorial</span>
+            <h1>{module.title}</h1>
+            <p>{module.description}</p>
+          </div>
+          <ol className="module-lesson-steps">
+            {module.steps.map((step) => (
+              <li key={step.title}>
+                <strong>{step.title}</strong>
+                <p>{step.description}</p>
+                <code>{step.example}</code>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       <main className="pyblocks-main"><section className="pyblocks-workspace"><div ref={editorRef} className="blockly-editor" aria-label="Workspace de blocos" />{!hasBlocks && <div className="pyblocks-empty-state" aria-hidden="true"><span>▣</span><strong>Arraste os blocos para começar</strong><p>Monte seu programa usando as categorias à esquerda.</p></div>}</section><section className="pyblocks-code"><div className="pyblocks-panel-heading"><h2><span aria-hidden="true">⌘</span> Python</h2><button type="button" onClick={copyCode}>▣ Copiar</button></div><pre>{code.split('\n').map((line, index) => <code key={`${index}-${line}`}><span>{index + 1}</span>{line || ' '}</code>)}</pre></section></main>
       <section className="pyblocks-console"><div className="pyblocks-status"><span aria-hidden="true" /> <strong>Pronto</strong><small>Sua vez de criar!</small></div><pre aria-label="Console">{consoleText}</pre><nav aria-label="Ações do editor"><button type="button" onClick={onBack}>← Voltar</button><button type="button" onClick={saveWorkspace}>💾 Salvar</button><button type="button" onClick={clearWorkspace}>↻ Limpar</button><button type="button" className="pyblocks-run" onClick={runProgram} disabled={running}>{running ? '⏳ Executando...' : '▶ Executar'}</button></nav></section>
       {popup && (

@@ -6,6 +6,13 @@ import moduleFour from '../assets/Módulo 4.png'
 import moduleFive from '../assets/Modulo 5.png'
 import moduleSix from '../assets/Modulo 6.png'
 import moduleSeven from '../assets/Modulo 7.png'
+import DeclaracaoVariaveis from './modulos/declaracao-variaveis'
+import EntradaSaida from './modulos/entrada-saida'
+import OperacoesMatematicas from './modulos/operacoes-matematicas'
+import ListasConteineres from './modulos/listas-conteineres'
+import Condicionais from './modulos/condicionais'
+import LacosRepeticao from './modulos/lacos-repeticao'
+import Funcoes from './modulos/funcoes'
 
 const modules = [
   { title: 'Declaração de variáveis e introdução ao sistema', description: 'Identifique sua primeira carga e mova os primeiros blocos.', image: moduleOne },
@@ -17,21 +24,15 @@ const modules = [
   { title: 'Funções e conclusão do sistema', description: 'Organize tudo em funções e conclua seu sistema.', image: moduleSeven },
 ]
 
-function ConstructionPage({ module, onBack }) {
-  return (
-    <section className="content-page construction-page">
-      <button type="button" className="back-button construction-back-button" onClick={onBack} aria-label="Voltar aos módulos">
-        ←
-      </button>
-      <div className="construction-content">
-        <span className="construction-icon" aria-hidden="true">🚧</span>
-        <p className="eyebrow">Módulo {module + 1}</p>
-        <h1>Em construção</h1>
-        <p>Este módulo estará disponível em breve. Continue acompanhando sua jornada de aprendizado!</p>
-      </div>
-    </section>
-  )
-}
+const modulePages = [
+  DeclaracaoVariaveis,
+  EntradaSaida,
+  OperacoesMatematicas,
+  ListasConteineres,
+  Condicionais,
+  LacosRepeticao,
+  Funcoes,
+]
 
 function Aprender({ onBack }) {
   const [selectedModule, setSelectedModule] = useState(null)
@@ -53,7 +54,8 @@ function Aprender({ onBack }) {
   }
 
   if (selectedModule !== null) {
-    return <ConstructionPage module={selectedModule} onBack={() => setSelectedModule(null)} />
+    const ModulePage = modulePages[selectedModule]
+    return <ModulePage onBack={() => setSelectedModule(null)} />
   }
 
   return (
