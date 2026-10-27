@@ -443,11 +443,12 @@ function Montar({ onBack, module }) {
   const workspaceRef = useRef(null)
   const moduleIntroButtonRef = useRef(null)
   const [code, setCode] = useState('# Arraste blocos para começar\n')
-  const [consoleText, setConsoleText] = useState('> Pronto para montar seu programa.')
+  const [consoleText, setConsoleText] = useState('')
   const [hasBlocks, setHasBlocks] = useState(false)
   const [popup, setPopup] = useState(null)
   const [running, setRunning] = useState(false)
   const [showModuleIntro, setShowModuleIntro] = useState(moduleNumber === 1)
+  const [showModuleTask, setShowModuleTask] = useState(false)
 
   useEffect(() => {
     setShowModuleIntro(moduleNumber === 1)
@@ -534,7 +535,7 @@ function Montar({ onBack, module }) {
     setPopup(null)
   }
 
-  const clearWorkspace = () => { workspaceRef.current?.clear(); setConsoleText('> Workspace limpo.\n✓ Pronto para um novo programa.') }
+  const clearWorkspace = () => { workspaceRef.current?.clear(); setConsoleText('') }
   const saveWorkspace = () => {
     const workspace = workspaceRef.current
     if (!workspace) return
@@ -587,29 +588,16 @@ function Montar({ onBack, module }) {
       setRunning(false)
     }
   }
-  const copyCode = async () => { await navigator.clipboard?.writeText(code); setConsoleText('✓ Código Python copiado para a área de transferência.') }
-
   return (
     <section className={module ? 'pyblocks-page pyblocks-module-page' : 'pyblocks-page'}>
       <style>{CONTAINER_CSS}</style>
-      {module && (
-        <section className="module-lesson" aria-label={`Tutorial do módulo ${module.number}`}>
-          <div className="module-lesson-heading">
-            <span>Módulo {module.number} · Tutorial</span>
-            <h1>{module.title}</h1>
-            <p>{module.description}</p>
-          </div>
-          <ol className="module-lesson-steps">
-            {module.steps.map((step) => (
-              <li key={step.title}>
-                <strong>{step.title}</strong>
-                <p>{step.description}</p>
-                <code>{step.example}</code>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      <header className="pyblocks-topbar">
+        <button type="button" className="pyblocks-back" onClick={onBack}>← Voltar</button>
+        <div className="pyblocks-topbar-title">
+          <h1>{module?.title ?? 'Montagem'}</h1>
+          {module && <button type="button" className="pyblocks-task-button" onClick={() => setShowModuleTask(true)} aria-label={`Ver tarefa do módulo ${module.number}`} title="Ver tarefa">?</button>}
+        </div>
+      </header>
       {moduleNumber === 1 && showModuleIntro && (
         <div className="module-intro-backdrop">
           <section className="module-intro-dialog" role="dialog" aria-modal="true" aria-labelledby="module-intro-title" aria-describedby="module-intro-description">
@@ -627,8 +615,27 @@ function Montar({ onBack, module }) {
           </section>
         </div>
       )}
-      <main className="pyblocks-main"><section className="pyblocks-workspace"><div ref={editorRef} className="blockly-editor" aria-label="Workspace de blocos" />{!hasBlocks && <div className="pyblocks-empty-state" aria-hidden="true"><span>▣</span><strong>Arraste os blocos para começar</strong><p>Monte seu programa usando as categorias à esquerda.</p></div>}</section><section className="pyblocks-code"><div className="pyblocks-panel-heading"><h2><span aria-hidden="true">⌘</span> Python</h2><button type="button" onClick={copyCode}>▣ Copiar</button></div><pre>{code.split('\n').map((line, index) => <code key={`${index}-${line}`}><span>{index + 1}</span>{line || ' '}</code>)}</pre></section></main>
-      <section className="pyblocks-console"><div className="pyblocks-status"><span aria-hidden="true" /> <strong>Pronto</strong><small>Sua vez de criar!</small></div><pre aria-label="Console">{consoleText}</pre><nav aria-label="Ações do editor"><button type="button" onClick={onBack}>← Voltar</button><button type="button" onClick={saveWorkspace}>💾 Salvar</button><button type="button" onClick={clearWorkspace}>↻ Limpar</button><button type="button" className="pyblocks-run" onClick={runProgram} disabled={running}>{running ? '⏳ Executando...' : '▶ Executar'}</button></nav></section>
+      {module && showModuleTask && (
+        <div className="module-task-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowModuleTask(false) }}>
+          <section className="module-task-dialog" role="dialog" aria-modal="true" aria-labelledby="module-task-title">
+            <button type="button" className="module-intro-close" onClick={() => setShowModuleTask(false)} aria-label="Fechar tarefa">×</button>
+            <span className="module-task-kicker">Tarefa · Módulo {module.number}</span>
+            <h2 id="module-task-title">{module.title}</h2>
+            <p className="module-task-description">{module.description}</p>
+            <ol className="module-lesson-steps">
+              {module.steps.map((step) => (
+                <li key={step.title}>
+                  <strong>{step.title}</strong>
+                  <p>{step.description}</p>
+                  <code>{step.example}</code>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+      )}
+      <main className="pyblocks-main"><section className="pyblocks-workspace"><div ref={editorRef} className="blockly-editor" aria-label="Workspace de blocos" />{!hasBlocks && <div className="pyblocks-empty-state" aria-hidden="true"><span>▣</span><strong>Arraste os blocos para começar</strong><p>Monte seu programa usando as categorias à esquerda.</p></div>}</section><section className="pyblocks-code"><div className="pyblocks-panel-heading"><h2><span aria-hidden="true">⌘</span> Python</h2><nav className="pyblocks-actions pyblocks-actions-header" aria-label="Ações do editor"><button type="button" onClick={clearWorkspace}>↻ Limpar</button><button type="button" onClick={saveWorkspace}>💾 Salvar</button><button type="button" className="pyblocks-run" onClick={runProgram} disabled={running}>{running ? '⏳ Executando...' : '▶ Executar'}</button></nav></div><pre>{code.split('\n').map((line, index) => <code key={`${index}-${line}`}><span>{index + 1}</span>{line || ' '}</code>)}</pre></section></main>
+      <section className="pyblocks-console"><span className="pyblocks-status">Pronto</span><pre aria-label="Console">{consoleText}</pre><nav aria-label="Ações do editor"><div className="pyblocks-actions pyblocks-actions-footer" aria-label="Ações do editor"><button type="button" onClick={clearWorkspace}>↻ Limpar</button><button type="button" onClick={saveWorkspace}>💾 Salvar</button><button type="button" className="pyblocks-run" onClick={runProgram} disabled={running}>{running ? '⏳ Executando...' : '▶ Executar'}</button></div></nav></section>
       {popup && (
         <FieldPopup
           key={popup.openedAt}
